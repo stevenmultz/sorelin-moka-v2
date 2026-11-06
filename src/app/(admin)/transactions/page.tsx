@@ -78,7 +78,7 @@ export default async function TransactionsPage({
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <AutoRefresh seconds={30} />
+      <AutoRefresh seconds={60} />
       <div>
         <h1 className="text-2xl font-bold text-[#6B4227] tracking-tight">Order History</h1>
         <p className="text-sm text-[#8E6D53] mt-1">Review all completed sales, payment statuses, and print receipts.</p>

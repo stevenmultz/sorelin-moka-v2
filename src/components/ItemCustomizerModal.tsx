@@ -320,22 +320,23 @@ export default function ItemCustomizerModal({
       const parts: string[] = [];
 
       if (hasConfiguredSlots) {
-        // Aggregate items cleanly (merging identical product names when neither has an upcharge)
-        const aggregated = new Map<string, { displayName: string; count: number; upcharge: number }>();
-        const addEntry = (itemName: string, qty: number, upcharge: number) => {
-          const key = `${itemName.trim().toLowerCase()}__${upcharge}`;
+        // Aggregate items cleanly with ID annotations for precise stock tracking
+        const aggregated = new Map<string, { displayName: string; count: number; upcharge: number; productId?: number }>();
+        const addEntry = (itemName: string, qty: number, upcharge: number, productId?: number) => {
+          const key = productId ? `id_${productId}__${upcharge}` : `${itemName.trim().toLowerCase()}__${upcharge}`;
           const existing = aggregated.get(key);
           if (existing) {
             existing.count += qty;
           } else {
-            aggregated.set(key, { displayName: itemName.trim(), count: qty, upcharge });
+            aggregated.set(key, { displayName: itemName.trim(), count: qty, upcharge, productId });
           }
         };
 
         // Collect fixed product slots first
         for (const fixed of fixedSlots) {
           if (fixed.productName && fixed.quantity) {
-            addEntry(fixed.productName, fixed.quantity, 0);
+            const fixedProd = allProducts?.find((p) => p.name.trim().toLowerCase() === fixed.productName?.trim().toLowerCase());
+            addEntry(fixed.productName, fixed.quantity, 0, fixedProd?.id);
           }
         }
 
@@ -351,16 +352,17 @@ export default function ItemCustomizerModal({
                 !isFixedPricingBundle && prod && minSlotPrice > 0
                   ? Math.max(0, effectivePrice(prod) - minSlotPrice)
                   : 0;
-              addEntry(name, count, upcharge);
+              addEntry(name, count, upcharge, prod?.id);
             }
           }
         }
 
         for (const entry of aggregated.values()) {
+          const idTag = entry.productId ? ` [#${entry.productId}]` : '';
           if (entry.upcharge > 0) {
-            parts.push(`${entry.count}x ${entry.displayName} (+${formatRupiah(entry.upcharge)})`);
+            parts.push(`${entry.count}x ${entry.displayName}${idTag} (+${formatRupiah(entry.upcharge)})`);
           } else {
-            parts.push(`${entry.count}x ${entry.displayName}`);
+            parts.push(`${entry.count}x ${entry.displayName}${idTag}`);
           }
         }
       } else {

@@ -11,7 +11,42 @@ export const instant = false;
 
 export default async function KioskPage() {
   await connection();
-  const activeShift = await getActiveShift();
+  const [activeShift, products] = await Promise.all([
+    getActiveShift(),
+    prisma.product.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        discountPrice: true,
+        stock: true,
+        isBestSeller: true,
+        isFavorite: true,
+        isBundle: true,
+        bundleQuota: true,
+        availableVariants: true,
+        description: true,
+        type: { select: { id: true, name: true } },
+        variant: { select: { id: true, name: true } },
+        images: { select: { id: true, url: true } },
+        variants: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            costPrice: true,
+            stock: true,
+            bundleUpcharge: true,
+            priority: true,
+          },
+          orderBy: { priority: 'asc' },
+        },
+      },
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+    }),
+  ]);
 
   if (!activeShift) {
     return (
@@ -29,16 +64,6 @@ export default async function KioskPage() {
       </div>
     );
   }
-
-  const products = await prisma.product.findMany({
-    where: { isActive: true },
-    include: {
-      type: true,
-      images: true,
-      variants: { where: { isActive: true }, orderBy: { priority: 'asc' } },
-    },
-    orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-  });
 
   return <KioskFlow products={products} />;
 }

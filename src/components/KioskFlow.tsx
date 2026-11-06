@@ -179,22 +179,15 @@ export default function KioskFlow({ products }: { products: KioskProduct[] }) {
   }, [products]);
 
   const totalBakeryStock = useMemo(() => {
-    return allAvailableVariants.reduce((sum, v) => sum + (v.stock || 0), 0);
-  }, [allAvailableVariants]);
+    return products
+      .filter((p) => !p.isBundle)
+      .reduce((sum, p) => sum + (p.stock || 0), 0);
+  }, [products]);
 
   // Combined product demand across all single items and bundle contents in cart
   const cartDemand = useMemo(() => {
     return getCartProductDemand(cart, products);
   }, [cart, products]);
-
-  // Periodically sync Kiosk catalog & stock when idle on start/menu screen
-  useEffect(() => {
-    if (step !== 'start' && (step !== 'menu' || customizingProduct || selectedProduct)) return;
-    const timer = setInterval(() => {
-      router.refresh();
-    }, 15000);
-    return () => clearInterval(timer);
-  }, [step, customizingProduct, selectedProduct, router]);
 
   // Check if a bundle package has any stock in store (ignoring cart)
   const isBundleInStockInStore = useCallback(
@@ -565,10 +558,15 @@ export default function KioskFlow({ products }: { products: KioskProduct[] }) {
   // 1. START SCREEN
   // =========================================================================
   if (step === 'start') {
+    const handleStartOrder = () => {
+      router.refresh();
+      setStep('menu');
+    };
+
     return (
       <div
         className="h-[100dvh] w-full bg-[#FAF0DA] flex flex-col items-center justify-center p-6 select-none cursor-pointer"
-        onClick={() => setStep('menu')}
+        onClick={handleStartOrder}
       >
         <div className="flex flex-col items-center gap-6 max-w-xs sm:max-w-sm text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -579,7 +577,7 @@ export default function KioskFlow({ products }: { products: KioskProduct[] }) {
           />
           <button
             type="button"
-            onClick={() => setStep('menu')}
+            onClick={handleStartOrder}
             className="px-8 py-3.5 bg-[#6B4227] text-[#FAF0DA] hover:bg-[#54311B] border-2 border-[#6B4227] rounded-sm font-handwriting text-lg font-bold tracking-widest uppercase transition-all duration-150 ease-out shadow-[4px_4px_0px_#6B4227] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#6B4227] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none cursor-pointer"
           >
             Tap to Order

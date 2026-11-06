@@ -625,7 +625,8 @@ export async function buildEscPosReceipt(
 
     // Print bundle package contents if available
     if (item.isBundle && item.bundleContents) {
-      for (const line of wrapText(`  * Bundle: ${item.bundleContents}`, LINE_WIDTH)) {
+      const cleanBundleText = item.bundleContents.replace(/\s*\[(?:#|id:?)\d+\]/gi, '');
+      for (const line of wrapText(`  * Bundle: ${cleanBundleText}`, LINE_WIDTH)) {
         bytes.push(...encodeLine(line));
       }
     }

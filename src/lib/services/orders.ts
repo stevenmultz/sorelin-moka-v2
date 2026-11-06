@@ -27,8 +27,9 @@ const MAX_QTY = 999;
 /**
  * Parse bundle flavor details from bundleContents string (e.g. "2x Garlic Butter, 1x Truffle Ham & Cheese (+Rp 3.000)").
  */
-export function parseBundleFlavors(contents?: string | null): Array<{ flavorName: string; quantity: number }> {
+export function parseBundleFlavors(contents?: string | null): Array<{ productId?: number; flavorName: string; quantity: number }> {
   return parseBundleContentsToItems(contents).map((item) => ({
+    productId: item.productId,
     flavorName: item.name,
     quantity: item.quantity,
   }));
@@ -172,7 +173,10 @@ export async function buildOrder(
 
       for (const f of flavors) {
         const cleanName = f.flavorName.toLowerCase().trim();
-        const matchingProd = productByName.get(cleanName);
+        let matchingProd = f.productId ? allActiveProducts.find((p) => p.id === f.productId && !p.isBundle) : null;
+        if (!matchingProd) {
+          matchingProd = productByName.get(cleanName);
+        }
         if (matchingProd && !matchingProd.isBundle) {
           const fixedQty = fixedProductQtyMap.get(cleanName) ?? 0;
           const categorySelectedQty = Math.max(0, f.quantity - fixedQty);
@@ -294,7 +298,7 @@ export async function buildOrder(
   // 1. Stock verification for standard products (including demand from bundle slots)
   for (const [productId, totalWanted] of totalQtyPerProduct) {
     const p = productById.get(productId)!;
-    if ((!p.variants || p.variants.length === 0) && !p.isBundle) {
+    if (!p.isBundle) {
       const inBundleDemand = productStockDemanded.get(productId) || 0;
       const combinedDemand = totalWanted + inBundleDemand;
       if (combinedDemand > p.stock) {
@@ -474,7 +478,10 @@ export async function approvePaymentService(input: ApproveInput) {
         for (const bf of bundleFlavors) {
           const neededQty = bf.quantity * item.quantity;
           const cleanName = bf.flavorName.trim().toLowerCase();
-          const matchingProd = productByName.get(cleanName);
+          let matchingProd = bf.productId ? allNonBundleProducts.find((prod) => prod.id === bf.productId) : null;
+          if (!matchingProd) {
+            matchingProd = productByName.get(cleanName);
+          }
           if (matchingProd && !matchingProd.isBundle) {
             productDeductions.set(matchingProd.id, (productDeductions.get(matchingProd.id) || 0) + neededQty);
             inventoryLogs.push({
@@ -554,11 +561,14 @@ export async function approvePaymentService(input: ApproveInput) {
         const sumResult = await tx.productVariantOption.aggregate({
           where: { productId: parentId, isActive: true },
           _sum: { stock: true },
+          _count: { _all: true },
         });
-        return tx.product.update({
-          where: { id: parentId },
-          data: { stock: sumResult._sum.stock ?? 0 },
-        });
+        if (sumResult._count._all > 0) {
+          return tx.product.update({
+            where: { id: parentId },
+            data: { stock: sumResult._sum.stock ?? 0 },
+          });
+        }
       });
       await Promise.all(syncOps);
     }
@@ -657,7 +667,10 @@ export async function cancelOrderService(input: CancelInput) {
           for (const bf of bundleFlavors) {
             const restoreQty = bf.quantity * item.quantity;
             const cleanName = bf.flavorName.trim().toLowerCase();
-            const matchingProd = productByName.get(cleanName);
+            let matchingProd = bf.productId ? allNonBundleProducts.find((prod) => prod.id === bf.productId) : null;
+            if (!matchingProd) {
+              matchingProd = productByName.get(cleanName);
+            }
             if (matchingProd && !matchingProd.isBundle) {
               productRestorations.set(matchingProd.id, (productRestorations.get(matchingProd.id) || 0) + restoreQty);
               inventoryLogs.push({
@@ -730,11 +743,14 @@ export async function cancelOrderService(input: CancelInput) {
           const sumResult = await tx.productVariantOption.aggregate({
             where: { productId: parentId, isActive: true },
             _sum: { stock: true },
+            _count: { _all: true },
           });
-          return tx.product.update({
-            where: { id: parentId },
-            data: { stock: sumResult._sum.stock ?? 0 },
-          });
+          if (sumResult._count._all > 0) {
+            return tx.product.update({
+              where: { id: parentId },
+              data: { stock: sumResult._sum.stock ?? 0 },
+            });
+          }
         });
         await Promise.all(syncOps);
       }

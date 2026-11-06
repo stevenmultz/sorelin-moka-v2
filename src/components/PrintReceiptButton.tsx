@@ -657,7 +657,7 @@ export default function PrintReceiptButton({ trx, autoPrint }: { trx: PrintRecei
                       )}
                       {item.isBundle && item.bundleContents && (
                         <div style={{ fontSize: '9px', fontWeight: 700, paddingLeft: '4px' }}>
-                          * Bundle: {item.bundleContents}
+                          * Bundle: {item.bundleContents.replace(/\s*\[(?:#|id:?)\d+\]/gi, '')}
                         </div>
                       )}
                       {item.notes && (

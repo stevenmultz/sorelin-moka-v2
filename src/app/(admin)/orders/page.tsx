@@ -28,7 +28,7 @@ export default async function OrdersPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <AutoRefresh seconds={15} />
+      <AutoRefresh seconds={30} />
 
       <div>
         <h1 className="text-2xl font-bold text-[#6B4227] tracking-tight">Active Orders (Kitchen)</h1>

@@ -411,7 +411,7 @@ export default function DashboardKanban({ initialOrders }: { initialOrders: Kanb
                         )}
                         {item.isBundle && item.bundleContents && (
                           <div className="text-[11px] text-[#6B4227] bg-[#FAF0DA]/70 p-1 rounded-xs border border-[#E5D5BC] mt-1 font-medium">
-                            📦 Bundle: {item.bundleContents}
+                            📦 Bundle: {item.bundleContents.replace(/\s*\[(?:#|id:?)\d+\]/gi, '')}
                           </div>
                         )}
                         {item.notes && (

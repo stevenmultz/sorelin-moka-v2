@@ -359,7 +359,14 @@ export interface StockCheckCartItem {
  * Parse a bundleContents string (e.g. "2x Salt Bread Original, 1x Thai Milk Tea")
  * into deduplicated `{ name, quantity }[]` items.
  */
-export function parseBundleContentsToItems(bundleContents?: string | null): { name: string; quantity: number }[] {
+/**
+ * Parse a bundleContents string (e.g. "2x Salt Bread Original [#12], 1x Thai Milk Tea [#5]")
+ * into deduplicated `{ productId?: number; name: string; quantity: number }[]` items.
+ * Robust against variant names, brackets, upcharge tags, and ID annotations.
+ */
+export function parseBundleContentsToItems(
+  bundleContents?: string | null
+): { productId?: number; name: string; quantity: number }[] {
   if (!bundleContents || !bundleContents.trim()) return [];
   const clean = bundleContents
     .replace(/^(isi|contents|include|termasuk)\s*:?\s*/i, '')
@@ -372,31 +379,36 @@ export function parseBundleContentsToItems(bundleContents?: string | null): { na
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const merged = new Map<string, { name: string; quantity: number }>();
+  const merged = new Map<string, { productId?: number; name: string; quantity: number }>();
 
   for (const part of parts) {
-    const prefixMatch = part.match(/^\(?(\d+)\s*[xX*]\)?\s*(.+)$/);
+    // Extract optional embedded [#productId] or [id:productId]
+    const idMatch = part.match(/\[(?:#|id:?)(\d+)\]/i);
+    const productId = idMatch ? parseInt(idMatch[1], 10) : undefined;
+    const partWithoutId = part.replace(/\[(?:#|id:?)(\d+)\]/gi, '').trim();
+
+    const prefixMatch = partWithoutId.match(/^\(?(\d+)\s*[xX*]\)?\s*(.+)$/);
     let name = '';
     let qty = 1;
     if (prefixMatch) {
       qty = Math.max(1, parseInt(prefixMatch[1], 10));
       name = prefixMatch[2].replace(/[()]/g, '').trim();
     } else {
-      const suffixMatch = part.match(/^(.+?)\s*\(\s*(\d+)\s*[xX*]?\s*\)$/);
+      const suffixMatch = partWithoutId.match(/^(.+?)\s*\(\s*(\d+)\s*[xX*]?\s*\)$/);
       if (suffixMatch) {
         name = suffixMatch[1].replace(/[()]/g, '').trim();
         qty = Math.max(1, parseInt(suffixMatch[2], 10));
       } else {
-        name = part.replace(/[()]/g, '').trim();
+        name = partWithoutId.replace(/[()]/g, '').trim();
       }
     }
     if (!name) continue;
-    const key = name.toLowerCase();
+    const key = productId ? `id_${productId}` : name.toLowerCase();
     const existing = merged.get(key);
     if (existing) {
       existing.quantity += qty;
     } else {
-      merged.set(key, { name, quantity: qty });
+      merged.set(key, { productId, name, quantity: qty });
     }
   }
 
