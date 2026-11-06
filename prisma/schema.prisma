@@ -1,0 +1,191 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  binaryTargets   = ["native", "rhel-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+model ProductType {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model ProductVariant {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id           Int      @id @default(autoincrement())
+  name         String
+  
+  typeId       Int?
+  type         ProductType? @relation(fields: [typeId], references: [id])
+  
+  variantId    Int?
+  variant      ProductVariant? @relation(fields: [variantId], references: [id])
+  
+  description  String?
+  images       ProductImage[]
+  isBestSeller Boolean  @default(false)
+  isFavorite   Boolean  @default(false)
+  // Soft delete: produk yang "dihapus" disembunyikan, riwayat stok & transaksi tetap utuh
+  isActive     Boolean  @default(true)
+  costPrice    Int      @default(0)
+  price        Int
+  discountPrice Int?
+  stock        Int      @default(0)
+  priority     Int      @default(0)
+
+  // Varian rasa & Bundling
+  availableVariants String? // Comma-separated rasa (e.g. "Original, Garlic Butter, Cheese Melt")
+  isBundle          Boolean  @default(false)
+  bundleQuota       Int?     // Kuota item per paket bundle (e.g. 3 atau 6)
+
+  variants          ProductVariantOption[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  inventoryLogs InventoryLog[]
+
+  @@index([isActive, priority])
+  @@index([typeId])
+  @@index([variantId])
+}
+
+model InventoryLog {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      String   // "IN", "OUT", "RESET"
+  quantity  Int
+  giver     String?
+  receiver  String?
+  notes     String?  // Alasan / Komentar
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model Expense {
+  id            Int      @id @default(autoincrement())
+  name          String
+  amount        Int
+  paymentMethod String   @default("Cash") // "Cash", "Transfer", "Owner"
+  startDate     DateTime
+  endDate       DateTime
+  createdAt     DateTime @default(now())
+
+  shiftId       Int?
+  shift         Shift?   @relation(fields: [shiftId], references: [id])
+
+  @@index([shiftId])
+  @@index([createdAt])
+}
+
+model Shift {
+  id           Int      @id @default(autoincrement())
+  startTime    DateTime @default(now())
+  endTime      DateTime?
+  status       String   @default("Open") // Open, Closed
+  // Bernilai 1 hanya saat shift Open, NULL saat Closed. Unique -> DB menolak dua shift Open sekaligus.
+  activeKey    Int?     @unique
+  initialCash  Int      @default(0)
+  expectedCash Int?
+  actualCash   Int?
+  openedBy     String
+  closedBy     String?
+  transactions Transaction[]
+  expenses     Expense[]
+
+  @@index([status])
+}
+
+model Transaction {
+  id            Int      @id @default(autoincrement())
+  customer      String
+  customerEmail String?
+  customerPhone String?
+  amount        Int
+  status        String   @default("Waiting Payment")
+  cashierName   String?
+  paidAmount    Int?
+  paymentMethod String?
+  selfieUrl     String?
+  cancelReason  String?
+  
+  preparedAt    DateTime?
+  readyAt       DateTime?
+  pickedUpAt    DateTime?
+  
+  createdAt     DateTime @default(now())
+  items         TransactionItem[]
+
+  shiftId       Int?
+  shift         Shift?   @relation(fields: [shiftId], references: [id])
+
+  @@index([status])
+  @@index([shiftId, status])
+  @@index([createdAt])
+  @@index([status, createdAt])
+}
+
+model TransactionItem {
+  id              Int         @id @default(autoincrement())
+  transactionId   Int
+  transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  productId       Int?
+  productName     String
+  quantity        Int
+  price           Int
+  costPrice       Int         @default(0)
+
+  // Varian rasa, paket bundling, dan catatan
+  variantOptionId Int?
+  variantOption   ProductVariantOption? @relation(fields: [variantOptionId], references: [id], onDelete: SetNull)
+  selectedVariant String?     // Rasa terpilih untuk single item
+  isBundle        Boolean     @default(false)
+  bundleContents  String?     // Rincian rasa paket bundling
+  notes           String?     // Catatan khusus
+
+  @@index([transactionId])
+  @@index([productId])
+  @@index([variantOptionId])
+}
+
+model ProductVariantOption {
+  id             Int       @id @default(autoincrement())
+  productId      Int
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name           String    // e.g. "Original Sea Salt", "Garlic Butter", "Truffle Ham & Cheese"
+  price          Int       // Price when purchased as a single item
+  costPrice      Int       @default(0) // COGS / HPP
+  stock          Int       @default(0) // Physical tray stock
+  bundleUpcharge Int       @default(0) // Extra surcharge when chosen in a box bundle
+  priority       Int       @default(0)
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  transactionItems TransactionItem[]
+
+  @@index([productId, isActive])
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}

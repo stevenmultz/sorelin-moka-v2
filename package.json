@@ -1,0 +1,47 @@
+{
+  "name": "sorelin-moka-pos",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:host": "next dev -H 0.0.0.0",
+    "build": "prisma generate && next build --webpack",
+    "postinstall": "prisma generate",
+    "start": "next start",
+    "start:host": "next start -H 0.0.0.0",
+    "lint": "eslint",
+    "clean:uploads": "tsx scripts/clean-uploads.ts",
+    "db:turso:sync": "tsx scripts/sync-turso.ts",
+    "db:reset": "tsx scripts/reset-db.ts",
+    "test:flow": "tsx scripts/test-full-bazaar-flow.ts",
+    "test:audit": "tsx scripts/test-bazaar-production-readiness.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.8.0",
+    "@prisma/adapter-libsql": "^5.22.0",
+    "@prisma/client": "^5.22.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.52.0",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.4",
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.0",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
+  }
+}

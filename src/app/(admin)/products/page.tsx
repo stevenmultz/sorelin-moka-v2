@@ -1,0 +1,166 @@
+import { Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { Plus, Search, Filter } from 'lucide-react';
+import Link from 'next/link';
+import ProductTableBody from '@/components/ProductTableBody';
+import Pagination from '@/components/Pagination';
+import { parsePage } from '@/lib/validation';
+
+// @next-codemod-ignore Cache Components adoption: this segment temporarily allows blocking.
+// Remove this opt-out after verifying the segment passes validation without it.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolvedParams = await searchParams;
+
+  const rawPage = parsePage(resolvedParams.page);
+  const sort = typeof resolvedParams.sort === 'string' ? resolvedParams.sort : 'priorities';
+  const q = typeof resolvedParams.q === 'string' ? resolvedParams.q.trim() : '';
+
+  const take = 10;
+
+  const where: Prisma.ProductWhereInput = {
+    isActive: true,
+    isBundle: false,
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q } },
+            { description: { contains: q } },
+            { type: { name: { contains: q } } },
+            { variant: { name: { contains: q } } },
+          ],
+        }
+      : {}),
+  };
+
+  let orderBy: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] = [
+    { priority: 'desc' },
+    { createdAt: 'desc' },
+    { id: 'desc' },
+  ];
+
+  if (sort === 'newest') orderBy = [{ createdAt: 'desc' }, { id: 'desc' }];
+  if (sort === 'oldest') orderBy = [{ createdAt: 'asc' }, { id: 'asc' }];
+
+  const skip = (rawPage - 1) * take;
+
+  const [totalItems, products] = await Promise.all([
+    prisma.product.count({ where }),
+    prisma.product.findMany({
+      where,
+      orderBy,
+      take,
+      skip,
+      include: {
+        type: true,
+        images: true,
+        variants: { where: { isActive: true }, orderBy: { priority: 'asc' } },
+      },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(totalItems / take) || 1;
+  const page = Math.min(rawPage, totalPages);
+
+  const canReorder = sort === 'priorities' && !q;
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-[#6B4227] tracking-tight">Product Catalog</h1>
+          <p className="text-sm text-[#8E6D53] mt-1">Manage your catalog, variants, and priority ordering.</p>
+        </div>
+        <Link
+          href="/products/new"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#6B4227] text-[#FAF0DA] rounded-xl font-semibold text-sm hover:bg-[#54311B] transition-colors shadow-xs"
+        >
+          <Plus className="h-4 w-4" strokeWidth={1.5} />
+          Add Product
+        </Link>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-[#E5D5BC] pb-3">
+        <span className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-[#6B4227] text-[#FAF0DA] shadow-xs">
+          Single Products ({totalItems})
+        </span>
+        <Link
+          href="/bundles"
+          className="px-4 py-1.5 text-xs font-semibold rounded-xl text-[#8E6D53] hover:text-[#6B4227] hover:bg-[#FAF0DA] transition-colors"
+        >
+          Bundles & Packages
+        </Link>
+      </div>
+
+      <div className="bg-[#FFFDF8] border border-[#E5D5BC] rounded-2xl overflow-hidden shadow-xs">
+        <form
+          action="/products"
+          method="GET"
+          className="p-4 border-b border-[#E5D5BC] flex flex-col sm:flex-row items-center gap-4 bg-[#FAF0DA]/60"
+        >
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#9E826B]" strokeWidth={1.5} />
+            <input
+              type="text"
+              name="q"
+              defaultValue={q}
+              placeholder="Enter product name"
+              className="w-full pl-9 pr-4 py-2 bg-[#FFFDF8] border border-[#E5D5BC] rounded-xl text-sm text-[#3F2311] placeholder-[#9E826B] focus:outline-none focus:ring-2 focus:ring-[#6B4227]/20 focus:border-[#6B4227] transition-all"
+            />
+          </div>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative">
+              <select
+                name="sort"
+                defaultValue={sort}
+                className="appearance-none pl-9 pr-8 py-2 bg-[#FFFDF8] border border-[#E5D5BC] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#6B4227]/20 focus:border-[#6B4227] text-[#3F2311] font-medium cursor-pointer"
+              >
+                <option value="priorities">Sort by Priority</option>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E6D53]" strokeWidth={1.5} />
+            </div>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-[#6B4227] text-[#FAF0DA] rounded-xl text-sm font-semibold hover:bg-[#54311B] transition-colors shadow-xs cursor-pointer"
+            >
+              Apply
+            </button>
+          </div>
+        </form>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-[#FAF0DA] text-[#8E6D53] font-semibold text-xs border-b border-[#E5D5BC]">
+              <tr>
+                <th className="px-5 py-3.5">{canReorder ? 'Priority (Drag)' : 'Priority'}</th>
+                <th className="px-5 py-3.5">Product Info</th>
+                <th className="px-5 py-3.5">Pricing</th>
+                <th className="px-5 py-3.5 text-center">Badges</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <ProductTableBody key={`${page}-${q}-${sort}`} initialProducts={products} canReorder={canReorder} />
+          </table>
+        </div>
+
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          basePath="/products"
+          params={{ q: q || undefined, sort: sort !== 'priorities' ? sort : undefined }}
+          totalItems={totalItems}
+          pageSize={take}
+        />
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Gaegu:wght@400;700&family=Patrick+Hand&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --color-border: #E5D5BC;
+  --color-sorelin-cream: #FAF0DA;
+  --color-sorelin-brown: #6B4227;
+  --color-sorelin-brown-dark: #54311B;
+  --color-sorelin-brown-deep: #3F2311;
+  --color-sorelin-milk: #FFFDF8;
+  --color-sorelin-gold: #C88A32;
+  --color-sorelin-gold-light: #F3DBAA;
+  --color-sorelin-border: #E5D5BC;
+  --color-sorelin-border-light: #F2E6CF;
+  --color-sorelin-muted: #8E6D53;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans), 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.012em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #FAF0DA;
+    color: #3F2311;
+    font-family: var(--font-sans), 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.012em;
+  }
+}
+
+@utility font-handwriting {
+  font-family: 'Patrick Hand', 'Gaegu', cursive, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@utility font-korean {
+  font-family: 'Gaegu', 'Patrick Hand', cursive, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* =========================================================================
+   KOREAN BAKERY SCROLLBAR (CREAM & BROWN DUO-TONE)
+   ========================================================================= */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF0DA;
+  border-left: 1.5px solid #6B4227;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6B4227;
+  border-radius: 4px;
+  border: 2px solid #FAF0DA;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #54311B;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #6B4227 #FAF0DA;
+}
+
+@utility kiosk-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #6B4227 #FAF0DA;
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #FAF0DA;
+    border-left: 1.5px dashed rgba(107, 66, 39, 0.4);
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #6B4227;
+    border-radius: 4px;
+    border: 2px solid #FAF0DA;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #54311B;
+  }
+}
+
+@media print {
+  @page {
+    size: 58mm auto;
+    margin: 0mm;
+  }
+
+  html, body {
+    width: 48mm !important;
+    max-width: 48mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Hide everything by default on print */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Show only the printable receipt */
+  #printable-receipt, #printable-receipt * {
+    visibility: visible !important;
+    color: #000000 !important;
+    border-color: #000000 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  /* Position it perfectly for 48mm print head on Blueprint Lite 58 */
+  #printable-receipt {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 48mm !important;
+    max-width: 48mm !important;
+    min-width: 48mm !important;
+    margin: 0 !important;
+    padding: 1.5mm 1.5mm 4mm 1.5mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    background-color: #ffffff !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+}
