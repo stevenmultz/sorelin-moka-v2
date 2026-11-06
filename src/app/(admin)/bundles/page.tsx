@@ -19,7 +19,7 @@ export default async function BundlesPage({
   const resolvedParams = await searchParams;
   const q = resolvedParams.q?.trim() || '';
 
-  const [bundles, singleProducts] = await Promise.all([
+  const [rawBundles, singleProducts] = await Promise.all([
     prisma.product.findMany({
       where: {
         isActive: true,
@@ -36,6 +36,14 @@ export default async function BundlesPage({
       include: { type: true },
     }),
   ]);
+
+  const bundles = rawBundles.map((b) => ({
+    ...b,
+    images: b.images.map((img) => ({
+      ...img,
+      url: img.url.startsWith('data:image/') ? `/api/images/product/${img.id}` : img.url,
+    })),
+  }));
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

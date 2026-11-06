@@ -69,12 +69,17 @@ export default async function TransactionsPage({
   const page = Math.min(rawPage, totalPages);
   const skip = (page - 1) * take;
 
-  const transactions = await prisma.transaction.findMany({
+  const rawTransactions = await prisma.transaction.findMany({
     where,
     orderBy,
     take,
     skip,
   });
+
+  const transactions = rawTransactions.map((t) => ({
+    ...t,
+    selfieUrl: t.selfieUrl?.startsWith('data:image/') ? `/api/images/selfie/${t.id}` : t.selfieUrl,
+  }));
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

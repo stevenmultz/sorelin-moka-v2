@@ -50,7 +50,7 @@ export default async function ProductsPage({
 
   const skip = (rawPage - 1) * take;
 
-  const [totalItems, products] = await Promise.all([
+  const [totalItems, rawProducts] = await Promise.all([
     prisma.product.count({ where }),
     prisma.product.findMany({
       where,
@@ -64,6 +64,14 @@ export default async function ProductsPage({
       },
     }),
   ]);
+
+  const products = rawProducts.map((p) => ({
+    ...p,
+    images: p.images.map((img) => ({
+      ...img,
+      url: img.url.startsWith('data:image/') ? `/api/images/product/${img.id}` : img.url,
+    })),
+  }));
 
   const totalPages = Math.ceil(totalItems / take) || 1;
   const page = Math.min(rawPage, totalPages);

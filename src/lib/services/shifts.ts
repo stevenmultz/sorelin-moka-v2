@@ -90,7 +90,7 @@ export async function summarizeShift(db: Db | typeof prisma, shiftId: number): P
     s.revenue += t.amount;
     if (t.paymentMethod === 'QRIS') s.qrisSales += t.amount;
     else if (t.paymentMethod === 'Debit') s.debitSales += t.amount;
-    else s.cashSales += t.amount;
+    else if (t.paymentMethod === 'Cash') s.cashSales += t.amount;
     for (const i of t.items) s.cogs += i.quantity * i.costPrice;
   }
 
@@ -169,22 +169,6 @@ export async function closeShiftService(shiftId: number, actualCashRaw: unknown,
     });
 
     invalidateShiftCache();
-
-    // Automated Immutable Snapshot Backup upon shift closing (bulletproof disaster recovery)
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const dbPath = path.resolve(process.cwd(), 'prisma', 'dev.db');
-      if (fs.existsSync(dbPath)) {
-        const backupDir = path.resolve(process.cwd(), 'prisma', 'backups');
-        if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backupFile = path.join(backupDir, `bazaar-shift-${shiftId}-${stamp}.db`);
-        fs.copyFileSync(dbPath, backupFile);
-      }
-    } catch {
-      // Non-fatal if snapshot fails
-    }
 
     return { expectedCash, actualCash };
   }, { maxWait: 15000, timeout: 30000 });

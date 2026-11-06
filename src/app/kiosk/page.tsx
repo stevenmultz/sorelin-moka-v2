@@ -11,7 +11,7 @@ export const instant = false;
 
 export default async function KioskPage() {
   await connection();
-  const [activeShift, products] = await Promise.all([
+  const [activeShift, rawProducts] = await Promise.all([
     getActiveShift(),
     prisma.product.findMany({
       where: { isActive: true },
@@ -64,6 +64,16 @@ export default async function KioskPage() {
       </div>
     );
   }
+
+  // Decouple massive Base64 strings from SSR HTML payload:
+  // Convert Data URLs to lightweight streaming API URLs cached at Vercel Edge CDN.
+  const products = rawProducts.map((p) => ({
+    ...p,
+    images: p.images.map((img) => ({
+      id: img.id,
+      url: img.url.startsWith('data:image/') ? `/api/images/product/${img.id}` : img.url,
+    })),
+  }));
 
   return <KioskFlow products={products} />;
 }

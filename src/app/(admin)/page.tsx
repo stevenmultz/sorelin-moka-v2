@@ -24,7 +24,7 @@ export default async function DashboardPage() {
     getActiveShift(),
   ]);
 
-  const [activeOrders, waitingPaymentItems, summary] = await Promise.all([
+  const [rawActiveOrders, rawWaitingPaymentItems, summary] = await Promise.all([
     prisma.transaction.findMany({
       where: {
         status: { in: [...KANBAN_STATUSES] },
@@ -44,6 +44,15 @@ export default async function DashboardPage() {
     }),
     activeShift ? summarizeShift(prisma, activeShift.id) : null,
   ]);
+
+  // Strip multi-megabyte Base64 strings from Dashboard SSR payload:
+  const sanitizeTrx = <T extends { id: number; selfieUrl?: string | null }>(t: T): T => ({
+    ...t,
+    selfieUrl: t.selfieUrl?.startsWith('data:image/') ? `/api/images/selfie/${t.id}` : t.selfieUrl,
+  });
+
+  const activeOrders = rawActiveOrders.map(sanitizeTrx);
+  const waitingPaymentItems = rawWaitingPaymentItems.map(sanitizeTrx);
 
   const shiftRevenue = summary?.revenue ?? 0;
   const cashRevenue = summary?.cashSales ?? 0;

@@ -81,17 +81,7 @@ export async function adjustStockService(input: AdjustStockInput) {
         data: { stock: newTotalStock },
       });
     } else {
-      const activeVariantsCount = await tx.productVariantOption.count({
-        where: { productId: product.id, isActive: true },
-      });
-      if (activeVariantsCount > 0) {
-        throw new UserError(
-          `Product "${product.name}" tracks stock per flavor tray. Please select a specific flavor variant to adjust stock.`
-        );
-      }
-
       if (type === 'IN') {
-        await tx.productVariantOption.count({}); // noop
         await tx.product.update({ where: { id: product.id }, data: { stock: { increment: quantity } } });
       } else if (type === 'OUT') {
         const r = await tx.product.updateMany({

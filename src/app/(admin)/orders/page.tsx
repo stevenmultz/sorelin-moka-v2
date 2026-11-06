@@ -17,7 +17,7 @@ export default async function OrdersPage() {
   await connection();
   const activeShift = await getActiveShift();
 
-  const orders = await prisma.transaction.findMany({
+  const rawOrders = await prisma.transaction.findMany({
     where: {
       status: { in: [STATUS.PREPARING, STATUS.READY] },
       shiftId: activeShift ? activeShift.id : -1,
@@ -25,6 +25,11 @@ export default async function OrdersPage() {
     orderBy: { createdAt: 'asc' },
     include: { items: true },
   });
+
+  const orders = rawOrders.map((o) => ({
+    ...o,
+    selfieUrl: o.selfieUrl?.startsWith('data:image/') ? `/api/images/selfie/${o.id}` : o.selfieUrl,
+  }));
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

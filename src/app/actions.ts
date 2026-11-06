@@ -566,6 +566,23 @@ export async function submitKioskOrder(data: {
     const waiting = await prisma.transaction.count({ where: { status: STATUS.WAITING, shift: { status: 'Open' } } })
     if (waiting >= MAX_WAITING_ORDERS) throw new UserError('Order queue is currently full. Please contact the cashier.')
 
+    // Duplicate submission guard: idempotency protection against double-tapping submit in Kiosk
+    const recentDuplicate = await prisma.transaction.findFirst({
+      where: {
+        customer: data.customerName.trim(),
+        status: STATUS.WAITING,
+        createdAt: { gte: new Date(Date.now() - 4000) },
+      },
+      select: { id: true, createdAt: true, customer: true },
+    })
+    if (recentDuplicate) {
+      return {
+        success: true,
+        transactionId: recentDuplicate.id,
+        transactionCode: generateTrxCode(recentDuplicate.id, recentDuplicate.createdAt, recentDuplicate.customer),
+      }
+    }
+
     if (data.photoBase64) selfieUrl = await saveSelfieDataUrl(data.photoBase64)
 
     try {
